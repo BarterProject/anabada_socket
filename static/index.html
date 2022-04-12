@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>cafe</title>
+    <script src="http://localhost:8080/socket.io/socket.io.js"></script>
+    <script>
+        let roomId;
+        let isTeacher;
+        let socket;
+        let mode = 0;
+        let step = 0;
+        let teacherStepDOM, studentStepDOM, teacherModeDOM, studentModeDOM
+
+        const login = () => {
+            if(isTeacher){
+                const teacherDiv = document.getElementsByClassName("teacher")[0];
+                teacherDiv.style.display = "block";
+            }else{
+                const studentDiv = document.getElementsByClassName("student")[0];
+                studentDiv.style.display = "block";
+            }
+        }
+
+        const logout = () => {
+            if(isTeacher){
+                const teacherDiv = document.getElementsByClassName("teacher")[0];
+                teacherDiv.style.display = "none";
+            }else{
+                const studentDiv = document.getElementsByClassName("student")[0];
+                studentDiv.style.display = "none";
+            }
+            socket.disconnect();
+        }
+
+        const onChangeModeHandler = () => {
+            mode = teacherModeDOM.value;
+            socket.emit("changeMode", mode);
+        }
+
+        const onChangeStepHandler = () => {
+            step = teacherStepDOM.value;
+            socket.emit("changeStep", step);
+        }
+
+        const onConnectHandler = (_isTeacher) => {
+            teacherStepDOM = document.getElementsByClassName("teacherStep")[0];
+            studentStepDOM = document.getElementsByClassName("studentStep")[0];
+            teacherModeDOM = document.getElementsByClassName("teacherMode")[0];
+            studentModeDOM = document.getElementsByClassName("studentMode")[0];
+            roomId = document.getElementsByClassName("roomId")[0].value;
+
+            socket = io.connect(`http://localhost:8080/room?roomID=${roomId}&isTeacher=${_isTeacher}`, {
+                path: "/socket.io/socket.io"
+	        });
+
+            socket.on("connect", () => {
+		        alert("socket connected");
+                isTeacher = _isTeacher;
+                login();
+            });
+
+            socket.on("enter", (data) => {
+                console.log("enter: " + data.msg);
+                console.log(isTeacher);
+                console.log(data);
+                if(isTeacher == true && data.role == "student"){
+                    alert("학생이 입장하였습니다.");
+                }
+                
+            });
+
+            socket.on("disconnect", () => {
+		        alert("socket disconnected");
+                logout();
+            });
+
+            socket.on("error", (data) => {
+                console.log(data);
+            });
+
+            socket.on("exit", (data) => {
+                if(isTeacher == true && data.role == "student"){
+                    alert("학생이 퇴장하였습니다.");
+                    logout();
+                }
+            });
+
+            socket.on("changeMode", (data) => {
+                console.log("mode changed");
+                mode = data.mode;
+                studentModeDOM.value = mode;
+            });
+
+            socket.on("changeStep", (data) => {
+                console.log("step changed");
+                step = data.step;
+                studentStepDOM.value = step;
+            });
+            
+        }
+
+    </script>
+</head>
+<body>
+    <div class="connect-box">
+        <div class="connect-box">
+            roomId: <input class="roomId" type="text" name="roomId" id="">
+            <button class="connect" onclick="onConnectHandler(true)">
+                connect Teacher
+            </button>
+            <button class="connect" onclick="onConnectHandler(false)">
+                connect student
+            </button>
+        </div>
+        <br/>
+        <div class="teacher" style="display: none">
+            teacher
+            <div class="mode">
+                mode: <input class="teacherMode" type="text">
+                <button class="changeMode" onclick="onChangeModeHandler()">
+                    change mode
+                </button>
+            </div>
+            <div class="step">
+                step : <input class="teacherStep" type="text">
+                <button class="changeStep" onclick="onChangeStepHandler()">
+                    change step
+                </button>
+            </div>
+        </div>
+        <br/>
+        <div class="student" style="display: none">
+            student
+            <div class="mode">
+                mode: <input class="studentMode" type="text" readonly value="0">
+            </div>
+            <div class="step">
+                step : <input class="studentStep" type="text" readonly value="0">
+            </div>
+        </div>
+    </div>
+</body>
+</html>
