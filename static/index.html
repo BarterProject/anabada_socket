@@ -5,142 +5,126 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>cafe</title>
-    <script src="http://localhost:8080/socket.io/socket.io.js"></script>
+    <script src="http://localhost:8088/socket.io/socket.io.js"></script>
     <script>
-        let roomId;
-        let isTeacher;
+
         let socket;
-        let mode = 0;
-        let step = 0;
-        let teacherStepDOM, studentStepDOM, teacherModeDOM, studentModeDOM
 
-        const login = () => {
-            if(isTeacher){
-                const teacherDiv = document.getElementsByClassName("teacher")[0];
-                teacherDiv.style.display = "block";
-            }else{
-                const studentDiv = document.getElementsByClassName("student")[0];
-                studentDiv.style.display = "block";
-            }
-        }
+        const onConnectHandler = async () => {       
+            
+            let id = document.getElementsByClassName("id")[0].value
+            let pw = document.getElementsByClassName("pw")[0].value
+            let roomListWrapper = document.getElementsByClassName("room-list")[0];
+            let messageListWrapper = document.getElementsByClassName("message-list")[0];
+            let jwt = "";
+            roomListWrapper.innerHTML = "";
 
-        const logout = () => {
-            if(isTeacher){
-                const teacherDiv = document.getElementsByClassName("teacher")[0];
-                teacherDiv.style.display = "none";
-            }else{
-                const studentDiv = document.getElementsByClassName("student")[0];
-                studentDiv.style.display = "none";
-            }
-            socket.disconnect();
-        }
+            await fetch("http://localhost:8080/api/user/authentication", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    "email": id,
+                    "password": pw
+                }),
+            }).then(async (response) => {
+                await response.json()
+                .then((data) => {
+                    jwt = data.jwt;
+                })
+            }).catch((err) => {
+                alert(err);
+            })
 
-        const onChangeModeHandler = () => {
-            mode = teacherModeDOM.value;
-            socket.emit("changeMode", mode);
-        }
-
-        const onChangeStepHandler = () => {
-            step = teacherStepDOM.value;
-            socket.emit("changeStep", step);
-        }
-
-        const onConnectHandler = (_isTeacher) => {
-            teacherStepDOM = document.getElementsByClassName("teacherStep")[0];
-            studentStepDOM = document.getElementsByClassName("studentStep")[0];
-            teacherModeDOM = document.getElementsByClassName("teacherMode")[0];
-            studentModeDOM = document.getElementsByClassName("studentMode")[0];
-            roomId = document.getElementsByClassName("roomId")[0].value;
-
-            socket = io.connect(`http://localhost:8080/room?roomID=${roomId}&isTeacher=${_isTeacher}`, {
+            await fetch("http://localhost:8080/api/rooms", {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${jwt}`
+                },
+            }).then(async (response) => {
+                await response.json()
+                .then((data) => {
+                    data.map((i) => {
+                        roomListWrapper.innerHTML += `<li>${i.name}</li>`
+                    })
+                })
+            }).catch((err) => {
+                alert(err);
+            })
+            
+            socket = io.connect(`http://localhost:8088/socket?jwt=${jwt}`, {
                 path: "/socket.io/socket.io"
 	        });
 
             socket.on("connect", () => {
 		        alert("socket connected");
-                isTeacher = _isTeacher;
-                login();
-            });
-
-            socket.on("enter", (data) => {
-                console.log("enter: " + data.msg);
-                console.log(isTeacher);
-                console.log(data);
-                if(isTeacher == true && data.role == "student"){
-                    alert("학생이 입장하였습니다.");
-                }
-                
             });
 
             socket.on("disconnect", () => {
 		        alert("socket disconnected");
-                logout();
             });
 
             socket.on("error", (data) => {
                 console.log(data);
             });
 
-            socket.on("exit", (data) => {
-                if(isTeacher == true && data.role == "student"){
-                    alert("학생이 퇴장하였습니다.");
-                    logout();
-                }
+            socket.on("message", (data) => {
+                messageListWrapper.innerHTML += `<li>${data.email}: ${data.message}</li>`
+                console.log(data);
             });
-
-            socket.on("changeMode", (data) => {
-                console.log("mode changed");
-                mode = data.mode;
-                studentModeDOM.value = mode;
-            });
-
-            socket.on("changeStep", (data) => {
-                console.log("step changed");
-                step = data.step;
-                studentStepDOM.value = step;
-            });
-            
+        
         }
+        const onMessageSendHandler = () => {
+            
+            let message = document.getElementsByClassName("message")[0].value
+            let roomName = document.getElementsByClassName("room-name")[0].value
+            
+            let requestMessage = {
+                roomName: roomName,
+                message: message
+            }
 
+            socket.emit("message", requestMessage);
+        }
     </script>
 </head>
 <body>
     <div class="connect-box">
         <div class="connect-box">
-            roomId: <input class="roomId" type="text" name="roomId" id="">
-            <button class="connect" onclick="onConnectHandler(true)">
-                connect Teacher
-            </button>
-            <button class="connect" onclick="onConnectHandler(false)">
-                connect student
+            login
+            <div>
+                <input class="id" type="text" name="id" id="" placeholder="ID" value="hello22332222@naver.com"> <br/>
+                <input class="pw" type="password" name="pw" id="" placeholder="PW" value="sdksd12">
+            </div>
+            <button class="connect" onclick="onConnectHandler()">
+                login
             </button>
         </div>
         <br/>
-        <div class="teacher" style="display: none">
-            teacher
-            <div class="mode">
-                mode: <input class="teacherMode" type="text">
-                <button class="changeMode" onclick="onChangeModeHandler()">
-                    change mode
-                </button>
-            </div>
-            <div class="step">
-                step : <input class="teacherStep" type="text">
-                <button class="changeStep" onclick="onChangeStepHandler()">
-                    change step
-                </button>
-            </div>
+
+        RoomList
+        <div class="room-list">
+            
         </div>
         <br/>
-        <div class="student" style="display: none">
-            student
-            <div class="mode">
-                mode: <input class="studentMode" type="text" readonly value="0">
-            </div>
-            <div class="step">
-                step : <input class="studentStep" type="text" readonly value="0">
-            </div>
+        <div class="send-message">
+            <input class="room-name" type="text" name="room-name" id="" placeholder="room-name" value=""><br/>
+            <input class="message" type="text" name="message" id="" placeholder="message" value="">
+            <button class="send" onclick="onMessageSendHandler()">
+                send
+            </button>
         </div>
+        <div class="message-list">
+            <li>hi</li>
+        </div>
+        <br/>
+        
+        
     </div>
+
+    "email": "was2py@naver.com",
+    "password": "abcdabce11234"
 </body>
 </html>

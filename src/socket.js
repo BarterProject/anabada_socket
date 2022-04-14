@@ -1,6 +1,8 @@
 import { Server } from "socket.io";
 import response from "./response.js";
-import jwtFilter from "./jwtFilter";
+import userService from "./services/userService.js";
+import roomService from "./services/roomService.js";
+import messageService from "./services/messageService.js";
 
 export default (server, app) => {
   const io = new Server(server, {
@@ -11,30 +13,25 @@ export default (server, app) => {
   app.set("io", io);
   const room = io.of("/socket");
 
-  //소켓 연결
-  room.on("connection", (socket) => {
+  room.on("connection", async (socket) => {
     let jwt = socket.handshake.query.jwt;
-    if (jwt === undefined) response.error(socket, "토큰이 없네요");
+    if (jwt === undefined)
+      response.error(socket, socket, "인증에 실패하였습니다");
 
-    jwtFilter.verifyJWT(jwt);
+    await userService.setUser(jwt, socket);
+    await roomService.setRooms(socket);
 
-    // socket.join(roomID);
-    // response.setRoomId(roomID);
-
-    //room에 연결된 socket 개수 확인 (본인 포함)
-    // let roomSocketSize =
-    //   room.adapter.rooms.get(roomID) && room.adapter.rooms.get(roomID).size;
-
-    //mode
-    //0: 기본, 대기모드
-    //1: 카페 메뉴
-    //2: 카페 이용수칙
-    //3: POS기 사용실습
-    //4: 고객응대 가이드
-    //5: 고객응대 실습
+    socket.on("message", async (data) => {
+      await messageService.saveMessage(socket, data);
+      response.message(socket, room.to(data.roomName), data.message);
+    });
 
     socket.on("disconnect", () => {
       console.log("disconnected");
     });
   });
 };
+
+//room에 연결된 socket 개수 확인 (본인 포함)
+// let roomSocketSize =
+//   room.adapter.rooms.get(roomID) && room.adapter.rooms.get(roomID).size;
