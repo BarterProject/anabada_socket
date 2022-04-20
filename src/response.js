@@ -1,38 +1,58 @@
 const response = {
-  message: "",
-  date: new Date(),
-  email: "",
-  type: "",
+  content: "",
+  createdAt: "",
+  state: "",
+  route: "",
+  kind: "",
+  user: {},
 };
 
-const setMessage = (_message) => {
-  response.message = _message;
+const setContent = (_content) => {
+  response.content = _content;
 };
 
-const setType = (_type) => {
-  response.type = _type;
+const setKind = (_kind) => {
+  response.kind = _kind;
 };
 
-const setResponse = (_socket) => {
-  response.date = new Date();
-  if (_socket.user != null) response.email = _socket.user.email;
+const setUser = (_user) => {
+  response.user = _user;
+};
+
+const setState = (_state) => {
+  response.state = _state;
+};
+
+const setResponse = () => {
+  response.createdAt = new Date();
+  // if (_socket.user != null) response.user.email = _socket.user.email;
 };
 
 export default {
   error: (_socket, _target, _message) => {
-    setResponse(_socket);
-    setMessage(_message);
-    setType("error");
+    setResponse();
+    setContent(_message);
+    setKind("error");
 
     _target.emit("error", response);
     _target.disconnect();
   },
 
   message: (_socket, _target, _message) => {
-    setResponse(_socket);
-    setMessage(_message);
-    setType("message");
+    setResponse();
+    setContent(_message);
+    setKind("message");
 
     _target.emit("message", response);
+  },
+
+  notice: (_target, _notice) => {
+    setResponse();
+    setContent(_notice.content[0]);
+    setKind(_notice.kind[0]);
+    setUser(_notice.user[0]);
+    setState(_notice.state[0]);
+
+    _target.emit("notice", response);
   },
 };

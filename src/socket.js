@@ -23,7 +23,7 @@ export default (server, app) => {
 
     socket.on("message", async (data) => {
       await messageService.saveMessage(socket, data);
-      response.message(socket, room.to(data.roomName), data.message);
+      response.message(socket, room.to(data.roomName), data);
     });
 
     socket.on("disconnect", () => {

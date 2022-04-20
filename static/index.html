@@ -36,6 +36,9 @@
             }).catch((err) => {
                 alert(err);
             })
+            
+            if(jwt === "")
+                return;
 
             await fetch("http://localhost:8080/api/rooms", {
                 method: "GET",
@@ -49,9 +52,11 @@
                     data.map((i) => {
                         roomListWrapper.innerHTML += `<li>${i.name}</li>`
                     })
+                    roomListWrapper.innerHTML+=`<li>${id}</li>`
                 })
             }).catch((err) => {
                 alert(err);
+                return;
             })
             
             socket = io.connect(`http://localhost:8088/socket?jwt=${jwt}`, {
@@ -72,6 +77,11 @@
 
             socket.on("message", (data) => {
                 messageListWrapper.innerHTML += `<li>${data.email}: ${data.message}</li>`
+                console.log(data);
+            });
+
+            socket.on("notice", (data) => {
+                // messageListWrapper.innerHTML += `<li>${data.email}: ${data.message}</li>`
                 console.log(data);
             });
         
@@ -117,14 +127,14 @@
             </button>
         </div>
         <div class="message-list">
-            <li>hi</li>
+            <!-- <li>hi</li> -->
         </div>
         <br/>
         
         
     </div>
 
-    "email": "was2py@naver.com",
-    "password": "abcdabce11234"
+    <!-- "email": "was2py@naver.com", -->
+    <!-- "password": "abcdabce11234" -->
 </body>
 </html>
